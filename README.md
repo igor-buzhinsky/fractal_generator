@@ -14,6 +14,8 @@ The tool will print its list of commands.
 
 Example to plot the Mandelbrot set and then zoom the top left corner:
 
-> mandelbrot
-> top 0.5
-> left 0.5
+```
+mandelbrot
+top 0.5
+left 0.5
+```
