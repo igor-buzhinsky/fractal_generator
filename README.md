@@ -6,9 +6,9 @@ Build on Linux:
 
 > make
 
-The build requires the X11 development headers, and saving PNG images requires ImageMagick. For example, on Ubuntu:
+The build requires a C++17 compiler, and saving PNG images requires ImageMagick. For example, on Ubuntu:
 
-> sudo apt install build-essential libx11-dev imagemagick
+> sudo apt install build-essential imagemagick
 
 Run the tests:
 

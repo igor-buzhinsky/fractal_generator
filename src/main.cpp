@@ -10,6 +10,8 @@
 #include "fractal.h"
 #include "palette.h"
 
+// The program only saves images and never opens a window, so CImg does not need X11
+#define cimg_display 0
 #include "CImg.h"
 
 using namespace cimg_library;

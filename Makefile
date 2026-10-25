@@ -1,5 +1,5 @@
 CXXFLAGS = -std=c++17 -O3 -Wall
-LDLIBS = -lX11 -pthread
+LDLIBS = -pthread
 
 HEADERS = $(wildcard src/*.h)
 OBJECTS = src/fractal.o src/palette.o src/cli.o
@@ -9,9 +9,8 @@ all: fractal_generator
 fractal_generator: $(OBJECTS) src/main.o
 	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
-# Unit tests do not use CImg, so they do not need X11
 tests/unit_tests: $(OBJECTS) tests/unit_tests.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ -pthread
+	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
 
 %.o: %.cpp $(HEADERS)
 	$(CXX) $(CXXFLAGS) -Isrc -c $< -o $@
