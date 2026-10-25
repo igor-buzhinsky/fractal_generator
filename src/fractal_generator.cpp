@@ -296,19 +296,31 @@ size_t x_iter, y_iter;
 palette pal;
 float **buffer;
 
+// Function application for display: an empty name stands for identity
+string apply_name(const string &function_name, const string &argument) {
+	return function_name.empty() ? argument : function_name + "(" + argument + ")";
+}
+
 void print_state() {
-	printf("x in [%.17f, %.17f];\n", x_min, x_max);
-	printf("y in [%.17f, %.17f];\n", y_min, y_max);
-	printf("points = %d; palette_size = %d; palette_skew = %.2f; threads_num = %d;\n",
-			points, palette_size, palette_skew, threads_num);
-	printf("body_color = %s; continuous_intensity = %i; \n",
-			color_body_name.c_str(), (int) continuous_intensity);
-	printf("colors = %s;\n",
-			color_sequence.c_str());
-	printf("f_c(z) = %s(%s(%s(z)) + %s(c)); \n",
-				g_name.c_str(), g_z2_name.c_str(), g_z1_name.c_str(), g_c_name.c_str());
-	printf("julia_on = %i; julia_c = (%.6f, %.6f)\n",
-			(int) julia_on, real(julia_c), imag(julia_c));
+	string formula = apply_name(g_name,
+			apply_name(g_z2_name, apply_name(g_z1_name, "z")) + " + " + apply_name(g_c_name, "c"));
+	printf("\n");
+	printf("Formula:  z -> %s\n", formula.c_str());
+	if (julia_on) {
+		printf("          Julia set: z starts at the point, c = %.15g %c %.15gi (julia_c)\n",
+				real(julia_c), imag(julia_c) < 0 ? '-' : '+', fabs(imag(julia_c)));
+	} else {
+		printf("          Mandelbrot-like set: z starts at 0, c is the point\n");
+	}
+	printf("View:     x in [%.15g, %.15g], y in [%.15g, %.15g]\n", x_min, x_max, y_min, y_max);
+	printf("          center (%.15g, %.15g), width %.6g, height %.6g\n",
+			(x_min + x_max) / 2, (y_min + y_max) / 2, x_max - x_min, y_max - y_min);
+	printf("Image:    %zu x %zu pixels (points = %d), saved to out.png\n", x_iter, y_iter, points);
+	printf("Colors:   %s (colors), inside the set: %s (body_color)\n",
+			color_sequence.c_str(), color_body_name.c_str());
+	printf("          palette_size = %d, palette_skew = %.2f, continuous_intensity = %s\n",
+			palette_size, palette_skew, continuous_intensity ? "on" : "off");
+	printf("Threads:  %d\n", threads_num);
 }
 
 void *run(void *ptr) {
