@@ -1,17 +1,15 @@
 //============================================================================
 // Name        : fractal_generator.cpp
 // Author      : Igor Buzhinsky
-// Version     :
-// Copyright   : 
 //============================================================================
 
-#include <iostream>
+#include <cmath>
 #include <complex>
-#include <vector>
-#include <string>
+#include <cstdio>
+#include <iostream>
 #include <sstream>
-#include <math.h>
-#include <stdio.h>
+#include <string>
+#include <vector>
 #include <pthread.h>
 
 #include "CImg.h"
@@ -19,22 +17,29 @@
 using namespace cimg_library;
 using namespace std;
 
-void split(const std::string &s, char delim, std::vector<std::string> &elems) {
-    stringstream ss(s);
-    string item;
-    while (getline(ss, item, delim)) {
-        elems.push_back(item);
-    }
+void split(const string &s, char delim, vector<string> &elems) {
+	stringstream ss(s);
+	string item;
+	while (getline(ss, item, delim)) {
+		elems.push_back(item);
+	}
 }
 
-double calc_coordinate(double min, double max, int i, int iter) {
-	return min + (max - min) * ((double) i / (iter - 1));
+// Formats a number with the given number of significant digits, without trailing zeros
+string format_number(double value, int precision = 15) {
+	char result[64];
+	snprintf(result, sizeof(result), "%.*g", precision, value);
+	return result;
+}
+
+double calc_coordinate(double min, double max, int i, int count) {
+	return min + (max - min) * ((double) i / (count - 1));
 }
 
 typedef complex<double> dcomplex;
-typedef dcomplex un_function(dcomplex);
+typedef dcomplex complex_function(dcomplex);
 string g_z1_name, g_z2_name, g_c_name, g_name;
-un_function *g_z1, *g_z2, *g_c, *g;
+complex_function *g_z1, *g_z2, *g_c, *g;
 
 dcomplex square(dcomplex z) {
 	return z * z;
@@ -46,8 +51,8 @@ dcomplex core_function(dcomplex z, dcomplex c) {
 	return g(g_z2(g_z1(z)) + g_c(c));
 }
 
-un_function *str_to_function(const string &str) {
-	un_function *res;
+complex_function *str_to_function(const string &str) {
+	complex_function *res;
 	if (str == "sqr") {
 		res = square;
 	} else if (str == "component_abs") {
@@ -84,14 +89,24 @@ un_function *str_to_function(const string &str) {
 	return res;
 }
 
-const double log_2 = log(2);
+// A point escapes once |z| exceeds this radius
+const double ESCAPE_RADIUS = 2;
+// For smooth coloring, iterate further: the smoothing formula is only accurate for large |z|
+const double SMOOTH_ESCAPE_RADIUS = 1 << 16;
+
 bool continuous_intensity = false;
 bool julia_on = true;
 dcomplex julia_c(0, 0);
 double x_min, x_max, y_min, y_max, palette_skew = 1.0;
-int points = 300000, palette_size = 1000, threads_num = 4;
+// approximate number of pixels in the image (the 'points' command)
+int pixel_count = 300000;
+int palette_size = 1000, threads_num = 4;
 
-double intensity(double x, double y, size_t palette_size) {
+// Returns the palette index for the point (x, y): 0 if the point does not escape
+// (it is in the set), otherwise the number of iterations before it escaped, which is
+// fractional for smooth coloring. The result never exceeds palette_size - 2, so that
+// palette::apply() can always interpolate between colors at index and index + 1.
+double iteration_count(double x, double y, size_t max_palette_size) {
 	dcomplex c = julia_on ? julia_c : dcomplex(x, y);
 	dcomplex z0 = julia_on ? dcomplex(x, y) : dcomplex(0, 0);
 
@@ -99,24 +114,20 @@ double intensity(double x, double y, size_t palette_size) {
 	size_t i;
 
 	if (continuous_intensity) {
-		for (i = 1; i < (palette_size - 2) && abs(v) < (1 << 16); i++) {
+		for (i = 1; i < (max_palette_size - 2) && abs(v) < SMOOTH_ESCAPE_RADIUS; i++) {
 			v = core_function(v, c);
 		}
 
-		if (i < palette_size - 2) {
-			double log_zn = log(abs(v)) / 2;
-			double nu = log(log_zn / log_2) / log_2;
-			if (nu > 1) {
-				nu = 1;
-			} else if (nu < 0) {
-				nu = 0;
-			}
+		if (i < max_palette_size - 2) {
+			// normalized iteration count: subtract how far |z| overshot the bailout
+			double nu = log2(log2(abs(v))) - 1;
+			nu = min(max(nu, 0.0), 1.0);
 			return i + 1 - nu;
 		}
 	} else {
-		for (i = 1; i < palette_size - 1; i++) {
+		for (i = 1; i < max_palette_size - 1; i++) {
 			v = core_function(v, c);
-			if (abs(v) > 2) {
+			if (abs(v) > ESCAPE_RADIUS) {
 				return i;
 			}
 		}
@@ -126,29 +137,27 @@ double intensity(double x, double y, size_t palette_size) {
 
 struct color {
 	unsigned char r, g, b;
-	
+
 	color(): r(0), g(0), b(0) {};
-	
+
 	color(unsigned char r, unsigned char g, unsigned char b): r(r), g(g), b(b) {};
-	
-	color(string str) {
+
+	color(const string &name) {
 		r = g = b = 0;
-		if (str == "black") {
-		} else if (str == "white") {
+		if (name == "white") {
 			r = g = b = 255;
-		} else if (str == "red") {
+		} else if (name == "red") {
 			r = 255;
-		} else if (str == "green") {
+		} else if (name == "green") {
 			g = 255;
-		} else if (str == "blue") {
+		} else if (name == "blue") {
 			b = 255;
-		} else if (str == "yellow") {
+		} else if (name == "yellow") {
 			r = g = 255;
-		} else if (str == "magenta") {
+		} else if (name == "magenta") {
 			b = r = 255;
-		} else if (str == "cyan") {
+		} else if (name == "cyan") {
 			b = g = 255;
-		} else {
 		}
 	}
 };
@@ -173,44 +182,43 @@ void set_functions(const string &str_g, const string &str_g_z1, const string &st
 	g_c = str_to_function(str_g_c);
 }
 
-void set_square(double x_min_, double x_max_, double y_min_, double y_max_) {
-	x_min = x_min_;
-	x_max = x_max_;
-	y_min = y_min_;
-	y_max = y_max_;
+void set_view(double new_x_min, double new_x_max, double new_y_min, double new_y_max) {
+	x_min = new_x_min;
+	x_max = new_x_max;
+	y_min = new_y_min;
+	y_max = new_y_max;
 }
 
 void mandelbrot() {
 	set_functions("", "", "sqr", "");
-	set_square(-1.6, 1.0, -1.05, 1.05);
+	set_view(-1.6, 1.0, -1.05, 1.05);
 	julia_on = false;
 }
 
 void tricorn() {
 	set_functions("", "conj", "sqr", "");
-	set_square(-1.6, 1.6, -1.6, 1.6);
+	set_view(-1.6, 1.6, -1.6, 1.6);
 	julia_on = false;
 }
 
 void burning_ship() {
 	set_functions("", "component_abs", "sqr", "");
-	set_square(-2.0, 1.0, -1.5, 0.5);
+	set_view(-2.0, 1.0, -1.5, 0.5);
 	julia_on = false;
 }
 
 void julia() {
 	set_functions("", "", "sqr", "");
-	set_square(-1.6, 1.6, -1.05, 1.05);
+	set_view(-1.6, 1.6, -1.05, 1.05);
 	julia_on = true;
 	julia_c = dcomplex(-0.7, 0.27015);
 }
 
 struct palette {
+	// colors[0] is the body color, the rest is the gradient for escaping points
 	vector<color> colors;
 
-	palette() {}
-	
-	void fill(size_t size, string color_sequence, color c_body, double skew) {
+	void fill(size_t size, const string &color_sequence, color c_body, double skew) {
 		colors.clear();
 		colors.push_back(c_body);
 		vector<string> str_colors;
@@ -255,45 +263,46 @@ void zoom(double &x1, double &x2, double value) {
 }
 
 void print_help() {
-	cout << "Presets:" << endl;
-	cout << "    mandelbrot | julia | tricorn | burning_ship" << endl;
-	cout << "                                     Load a fractal with its default view" << endl;
-	cout << "View:" << endl;
-	cout << "    x_min | x_max | y_min | y_max <double>" << endl;
-	cout << "                                     Set a boundary of the visible area" << endl;
-	cout << "    zoom <double>                    Zoom in around the center (< 1 zooms out)" << endl;
-	cout << "    left | right | top | bottom <double>" << endl;
-	cout << "                                     Keep only this fraction of the view on that side," << endl;
-	cout << "                                     e.g. 'left 0.5' keeps the left half" << endl;
-	cout << "Image:" << endl;
-	cout << "    points <integer>                 Total number of pixels in the output image" << endl;
-	cout << "    palette_size <integer>           Number of colors, also the maximum iteration count" << endl;
-	cout << "    palette_skew <double>            Exponent of color distribution (1 = uniform)" << endl;
-	cout << "    colors <color_1:...:color_n>     Gradient for points outside the set; available colors:" << endl;
-	cout << "                                     black, white, red, green, blue, yellow, magenta, cyan" << endl;
-	cout << "    body_color <color>               Color of points inside the set" << endl;
-	cout << "    continuous_intensity <0 or 1>    Smooth coloring instead of discrete bands" << endl;
-	cout << "Formula f_c(z) = g(g_z2(g_z1(z)) + g_c(c)):" << endl;
-	cout << "    g | g_z1 | g_z2 | g_c <function_name>" << endl;
-	cout << "                                     Replace one of the functions in the formula;" << endl;
-	cout << "                                     available: sqr, cube, inverse, conj, component_abs," << endl;
-	cout << "                                     sin, cos, tan, cot, sinh, cosh, tanh, coth, exp, log;" << endl;
-	cout << "                                     any other name means identity" << endl;
-	cout << "    julia_on <0 or 1>                1: Julia set (c is fixed, z_0 is the point)," << endl;
-	cout << "                                     0: Mandelbrot-like set (z_0 = 0, c is the point)" << endl;
-	cout << "    julia_c <re:double> <im:double>  Constant c used for Julia sets" << endl;
-	cout << "Other:" << endl;
-	cout << "    threads_num <integer>            Number of threads used for computation" << endl;
-	cout << "    plot                             Redraw the image" << endl;
-	cout << "    help                             Show this list" << endl;
-	cout << "    exit                             Quit the program" << endl;
-	cout << "Each new image is saved to out.png." << endl;
+	cout << R"(Presets:
+    mandelbrot | julia | tricorn | burning_ship
+                                     Load a fractal with its default view
+View:
+    x_min | x_max | y_min | y_max <double>
+                                     Set a boundary of the visible area
+    zoom <double>                    Zoom in around the center (< 1 zooms out)
+    left | right | top | bottom <double>
+                                     Keep only this fraction of the view on that side,
+                                     e.g. 'left 0.5' keeps the left half
+Image:
+    points <integer>                 Total number of pixels in the output image
+    palette_size <integer>           Number of colors, also the maximum iteration count
+    palette_skew <double>            Exponent of color distribution (1 = uniform)
+    colors <color_1:...:color_n>     Gradient for points outside the set; available colors:
+                                     black, white, red, green, blue, yellow, magenta, cyan
+    body_color <color>               Color of points inside the set
+    continuous_intensity <0 or 1>    Smooth coloring instead of discrete bands
+Formula f_c(z) = g(g_z2(g_z1(z)) + g_c(c)):
+    g | g_z1 | g_z2 | g_c <function_name>
+                                     Replace one of the functions in the formula;
+                                     available: sqr, cube, inverse, conj, component_abs,
+                                     sin, cos, tan, cot, sinh, cosh, tanh, coth, exp, log;
+                                     any other name means identity
+    julia_on <0 or 1>                1: Julia set (c is fixed, z_0 is the point),
+                                     0: Mandelbrot-like set (z_0 = 0, c is the point)
+    julia_c <re:double> <im:double>  Constant c used for Julia sets
+Other:
+    threads_num <integer>            Number of threads used for computation
+    plot                             Redraw the image
+    help                             Show this list
+    exit                             Quit the program
+Each new image is saved to out.png.
+)";
 }
 
 string color_sequence("black:red:yellow:green:blue:cyan:magenta:white");
 string color_body_name = "black";
 color color_body(color_body_name);
-size_t x_iter, y_iter;
+size_t image_width, image_height;
 palette pal;
 float **buffer;
 
@@ -305,34 +314,37 @@ string apply_name(const string &function_name, const string &argument) {
 void print_state() {
 	string formula = apply_name(g_name,
 			apply_name(g_z2_name, apply_name(g_z1_name, "z")) + " + " + apply_name(g_c_name, "c"));
-	printf("\n");
-	printf("Formula:  z -> %s\n", formula.c_str());
+	cout << endl;
+	cout << "Formula:  z -> " << formula << endl;
 	if (julia_on) {
-		printf("          Julia set: z starts at the point, c = %.15g %c %.15gi (julia_c)\n",
-				real(julia_c), imag(julia_c) < 0 ? '-' : '+', fabs(imag(julia_c)));
+		cout << "          Julia set: z starts at the point, c = " << format_number(real(julia_c))
+				<< (imag(julia_c) < 0 ? " - " : " + ") << format_number(fabs(imag(julia_c)))
+				<< "i (julia_c)" << endl;
 	} else {
-		printf("          Mandelbrot-like set: z starts at 0, c is the point\n");
+		cout << "          Mandelbrot-like set: z starts at 0, c is the point" << endl;
 	}
-	printf("View:     x in [%.15g, %.15g], y in [%.15g, %.15g]\n", x_min, x_max, y_min, y_max);
-	printf("          center (%.15g, %.15g), width %.6g, height %.6g\n",
-			(x_min + x_max) / 2, (y_min + y_max) / 2, x_max - x_min, y_max - y_min);
-	printf("Image:    %zu x %zu pixels (points = %d), saved to out.png\n", x_iter, y_iter, points);
-	printf("Colors:   %s (colors), inside the set: %s (body_color)\n",
-			color_sequence.c_str(), color_body_name.c_str());
-	printf("          palette_size = %d, palette_skew = %.2f, continuous_intensity = %s\n",
-			palette_size, palette_skew, continuous_intensity ? "on" : "off");
-	printf("Threads:  %d\n", threads_num);
+	cout << "View:     x in [" << format_number(x_min) << ", " << format_number(x_max)
+			<< "], y in [" << format_number(y_min) << ", " << format_number(y_max) << "]" << endl;
+	cout << "          center (" << format_number((x_min + x_max) / 2) << ", "
+			<< format_number((y_min + y_max) / 2) << "), width " << format_number(x_max - x_min, 6)
+			<< ", height " << format_number(y_max - y_min, 6) << endl;
+	cout << "Image:    " << image_width << " x " << image_height << " pixels (points = " << pixel_count
+			<< "), saved to out.png" << endl;
+	cout << "Colors:   " << color_sequence << " (colors), inside the set: " << color_body_name
+			<< " (body_color)" << endl;
+	cout << "          palette_size = " << palette_size << ", palette_skew = " << format_number(palette_skew)
+			<< ", continuous_intensity = " << (continuous_intensity ? "on" : "off") << endl;
+	cout << "Threads:  " << threads_num << endl;
 }
 
 void *run(void *ptr) {
 	int thread_index = *(int *)ptr;
-	for (size_t x_i = thread_index; x_i < x_iter; x_i += threads_num) {
-		buffer[x_i] = new float[y_iter];
-		double x = calc_coordinate(x_min, x_max, x_i, x_iter);
-		for (size_t y_i = 0; y_i < y_iter; y_i++) {
-			double y = calc_coordinate(y_min, y_max, y_i, y_iter);
-			float color = (float) intensity(x, y, palette_size);
-			buffer[x_i][y_i] = color;
+	for (size_t x_i = thread_index; x_i < image_width; x_i += threads_num) {
+		buffer[x_i] = new float[image_height];
+		double x = calc_coordinate(x_min, x_max, x_i, image_width);
+		for (size_t y_i = 0; y_i < image_height; y_i++) {
+			double y = calc_coordinate(y_min, y_max, y_i, image_height);
+			buffer[x_i][y_i] = (float) iteration_count(x, y, palette_size);
 		}
 	}
 	return NULL;
@@ -347,30 +359,24 @@ void read_args(vector<string> &arguments, int number) {
 
 void clean_buffer() {
 	if (buffer != NULL) {
-		for (size_t x_i = 0; x_i < x_iter; x_i++) {
+		for (size_t x_i = 0; x_i < image_width; x_i++) {
 			delete[] buffer[x_i];
 		}
 		delete[] buffer;
 	}
 }
 
-void recalc_iter() {
-	double x_range = x_max - x_min;
-	double y_range = y_max - y_min;
-
-	// x_iter * y_iter = calculations
-	// x_iter / y_iter = x_range / y_range
-	// x_iter = x_range / y_range * y_iter
-	// x_range / y_range * y_iter^2 = calculations
-	// y_iter = sqrt(calculations * y_range / x_range)
-	y_iter = (size_t) sqrt(points * y_range / x_range);
-	x_iter = (size_t) sqrt(points * x_range / y_range);
+// Chooses the image size so that it has about pixel_count pixels and the aspect ratio of the view
+void compute_image_size() {
+	double aspect_ratio = (x_max - x_min) / (y_max - y_min);
+	image_height = (size_t) sqrt(pixel_count / aspect_ratio);
+	image_width = (size_t) sqrt(pixel_count * aspect_ratio);
 }
 
 void recalc_fractal() {
 	clean_buffer();
-	recalc_iter();
-	buffer = new float*[x_iter];
+	compute_image_size();
+	buffer = new float*[image_width];
 	vector<pthread_t> threads;
 	int *thread_indices = new int[threads_num];
 	for (int i = 0; i < threads_num; i++) {
@@ -391,9 +397,9 @@ void recalc_fractal() {
 
 void prepare_image() {
 	pal.fill(palette_size, color_sequence, color_body, palette_skew);
-	CImg<unsigned char> img(x_iter, y_iter, 1, 3, 0);
-	for (size_t x_i = 0; x_i < x_iter; x_i++) {
-		for (size_t y_i = 0; y_i < y_iter; y_i++) {
+	CImg<unsigned char> img(image_width, image_height, 1, 3, 0);
+	for (size_t x_i = 0; x_i < image_width; x_i++) {
+		for (size_t y_i = 0; y_i < image_height; y_i++) {
 			pal.apply(img, x_i, y_i, buffer[x_i][y_i]);
 		}
 	}
@@ -402,10 +408,10 @@ void prepare_image() {
 
 // Unit tests include this file and provide their own main()
 #ifndef FRACTAL_GENERATOR_NO_MAIN
-int main(int argc, char *argv[]) {
+int main() {
 	print_help();
 	julia();
-	
+
 	string command;
 	vector<string> arguments;
 	bool first_time = true;
@@ -431,7 +437,7 @@ int main(int argc, char *argv[]) {
 			}
 			read_args(arguments, arg_number);
 		}
-		
+
 		bool must_recalc_fractal = true;
 
 		if (command == "exit") {
@@ -495,7 +501,7 @@ int main(int argc, char *argv[]) {
 				cerr << "The value must be at least 100!" << endl;
 				continue;
 			}
-			points = value;
+			pixel_count = value;
 		} else if (command == "g") {
 			set_functions(arguments[0], g_z1_name, g_z2_name, g_c_name);
 		} else if (command == "g_z1") {
@@ -506,13 +512,11 @@ int main(int argc, char *argv[]) {
 			set_functions(g_name, g_z1_name, g_z2_name, arguments[0]);
 		} else if (command == "colors") {
 			color_sequence = arguments[0];
-			// TODO check correctness
 			must_recalc_fractal = false;
 		} else if (command == "body_color") {
 			color_body_name = arguments[0];
 			color_body = color(color_body_name);
 			must_recalc_fractal = false;
-			// TODO check correctness
 		} else if (command == "zoom") {
 			double value = atof(arguments[0].c_str());
 			if (value <= 0) {
@@ -583,11 +587,11 @@ int main(int argc, char *argv[]) {
 			cerr << "Unknown command! Type 'help' to see the list of available ones." << endl;
 			continue;
 		}
-		
+
 		if (must_recalc_fractal) {
 			recalc_fractal();
 		}
-		
+
 		prepare_image();
 		print_state();
 	}

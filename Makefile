@@ -1,4 +1,4 @@
-CXXFLAGS = -std=c++0x -O3 -Wall
+CXXFLAGS = -std=c++17 -O3 -Wall
 LDLIBS = -lX11 -lpthread
 
 all: fractal_generator

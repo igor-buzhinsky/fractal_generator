@@ -86,7 +86,7 @@ expect_output "julia_c" "c = 0.3 - 0.5i"
 
 run "points 10000" "colors black:white" "body_color red" "palette_skew 2" "continuous_intensity 1" "exit"
 expect_output "colors" "black:white (colors), inside the set: red (body_color)"
-expect_output "colors" "palette_skew = 2.00, continuous_intensity = on"
+expect_output "colors" "palette_skew = 2, continuous_intensity = on"
 
 run "points 10000" "threads_num 1" "plot" "exit"
 expect_output "threads_num" "Threads:  1"

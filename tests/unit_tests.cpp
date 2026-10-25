@@ -75,17 +75,17 @@ void test_intensity() {
 	mandelbrot();
 	continuous_intensity = false;
 	// 0 is inside the Mandelbrot set
-	CHECK(intensity(0, 0, 100) == 0);
+	CHECK(iteration_count(0, 0, 100) == 0);
 	// -1 is inside as well (period-2 cycle)
-	CHECK(intensity(-1, 0, 100) == 0);
+	CHECK(iteration_count(-1, 0, 100) == 0);
 	// far outside points escape immediately
-	CHECK(intensity(2, 2, 100) == 1);
+	CHECK(iteration_count(2, 2, 100) == 1);
 	// points closer to the set take more iterations to escape
-	CHECK(intensity(0.3, 0, 100) > intensity(1, 0, 100));
+	CHECK(iteration_count(0.3, 0, 100) > iteration_count(1, 0, 100));
 
 	continuous_intensity = true;
-	CHECK(intensity(0, 0, 100) == 0);
-	double smooth = intensity(0.3, 0, 100);
+	CHECK(iteration_count(0, 0, 100) == 0);
+	double smooth = iteration_count(0.3, 0, 100);
 	CHECK(smooth > 0 && smooth < 100);
 	continuous_intensity = false;
 
@@ -93,8 +93,8 @@ void test_intensity() {
 	CHECK(julia_on);
 	// for c = 0, the filled Julia set is the unit disk
 	julia_c = dcomplex(0, 0);
-	CHECK(intensity(0.5, 0.5, 100) == 0);
-	CHECK(intensity(1.5, 0, 100) > 0);
+	CHECK(iteration_count(0.5, 0.5, 100) == 0);
+	CHECK(iteration_count(1.5, 0, 100) > 0);
 }
 
 void test_presets() {
@@ -156,10 +156,10 @@ void test_zoom() {
 }
 
 void test_recalc_iter() {
-	set_square(-2, 2, -1, 1);
-	points = 20000;
-	recalc_iter();
-	CHECK(x_iter == 200 && y_iter == 100);
+	set_view(-2, 2, -1, 1);
+	pixel_count = 20000;
+	compute_image_size();
+	CHECK(image_width == 200 && image_height == 100);
 }
 
 void test_apply_name() {
@@ -170,29 +170,29 @@ void test_apply_name() {
 
 void test_recalc_fractal() {
 	mandelbrot();
-	set_square(-2, 1, -1.5, 1.5);
-	points = 10000;
+	set_view(-2, 1, -1.5, 1.5);
+	pixel_count = 10000;
 	palette_size = 100;
 
 	threads_num = 1;
 	recalc_fractal();
-	CHECK(x_iter == 100 && y_iter == 100);
+	CHECK(image_width == 100 && image_height == 100);
 	// the center column passes through the main cardioid, the image corner is outside
-	CHECK(buffer[x_iter * 2 / 3][y_iter / 2] == 0);
+	CHECK(buffer[image_width * 2 / 3][image_height / 2] == 0);
 	CHECK(buffer[0][0] > 0);
 
 	vector<float> single_threaded;
-	for (size_t x_i = 0; x_i < x_iter; x_i++) {
-		single_threaded.insert(single_threaded.end(), buffer[x_i], buffer[x_i] + y_iter);
+	for (size_t x_i = 0; x_i < image_width; x_i++) {
+		single_threaded.insert(single_threaded.end(), buffer[x_i], buffer[x_i] + image_height);
 	}
 
 	// multithreading must not change the result
 	threads_num = 7;
 	recalc_fractal();
 	bool same = true;
-	for (size_t x_i = 0; x_i < x_iter; x_i++) {
-		for (size_t y_i = 0; y_i < y_iter; y_i++) {
-			same &= buffer[x_i][y_i] == single_threaded[x_i * y_iter + y_i];
+	for (size_t x_i = 0; x_i < image_width; x_i++) {
+		for (size_t y_i = 0; y_i < image_height; y_i++) {
+			same &= buffer[x_i][y_i] == single_threaded[x_i * image_height + y_i];
 		}
 	}
 	CHECK(same);
