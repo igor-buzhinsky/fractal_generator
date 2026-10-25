@@ -191,7 +191,7 @@ void test_image_size() {
 	// extremely tall view
 	size = compute_image_size({0, 1e-9, 0, 1}, 10000);
 	CHECK(size.width == 2 && size.height == 5000);
-	// a side is never longer than image converters accept
+	// a side is never longer than MAX_IMAGE_SIDE
 	size = compute_image_size({0, 1, 0, 1e-9}, 300000);
 	CHECK(size.width == MAX_IMAGE_SIDE && size.height == 2);
 }

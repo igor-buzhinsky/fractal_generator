@@ -75,7 +75,7 @@ bool apply_preset(const std::string &name, fractal_settings &settings);
 // interpolate between colors at index and index + 1.
 double iteration_count(const fractal_settings &settings, dcomplex point);
 
-// Each image side is at most this long, which image converters accept
+// Each image side is at most this long, to keep extremely wide or tall images reasonable
 const size_t MAX_IMAGE_SIDE = 16384;
 
 struct image_size {

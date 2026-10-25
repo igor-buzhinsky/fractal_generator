@@ -6,9 +6,9 @@ Build on Linux:
 
 > make
 
-The build requires a C++17 compiler, and saving PNG images requires ImageMagick. For example, on Ubuntu:
+The build requires a C++17 compiler and libpng. For example, on Ubuntu:
 
-> sudo apt install build-essential imagemagick
+> sudo apt install build-essential libpng-dev
 
 Run the tests:
 

@@ -12,6 +12,8 @@
 
 // The program only saves images and never opens a window, so CImg does not need X11
 #define cimg_display 0
+// Save PNG files with libpng instead of calling an external converter
+#define cimg_use_png
 #include "CImg.h"
 
 using namespace cimg_library;

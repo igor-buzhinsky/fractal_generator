@@ -1,5 +1,5 @@
 CXXFLAGS = -std=c++17 -O3 -Wall
-LDLIBS = -pthread
+LDLIBS = -lpng -pthread
 
 HEADERS = $(wildcard src/*.h)
 OBJECTS = src/fractal.o src/palette.o src/cli.o
