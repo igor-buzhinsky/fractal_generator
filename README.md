@@ -6,6 +6,10 @@ Build on Linux:
 
 > make
 
+The build requires the X11 development headers. For example, on Ubuntu:
+
+> sudo apt install build-essential libx11-dev
+
 Run:
 
 > ./fractal_generator
