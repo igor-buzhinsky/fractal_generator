@@ -6,9 +6,9 @@ Build on Linux:
 
 > make
 
-The build requires the X11 development headers. For example, on Ubuntu:
+The build requires the X11 development headers, and saving PNG images requires ImageMagick. For example, on Ubuntu:
 
-> sudo apt install build-essential libx11-dev
+> sudo apt install build-essential libx11-dev imagemagick
 
 Run the tests:
 

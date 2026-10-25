@@ -3,10 +3,13 @@
 // Author      : Igor Buzhinsky
 //============================================================================
 
+#include <algorithm>
+#include <climits>
 #include <cmath>
 #include <complex>
 #include <cstdio>
 #include <iostream>
+#include <map>
 #include <sstream>
 #include <string>
 #include <vector>
@@ -32,6 +35,21 @@ string format_number(double value, int precision = 15) {
 	return result;
 }
 
+// Parses the whole text as a finite number
+bool parse_double(const string &text, double &value) {
+	char *end;
+	value = strtod(text.c_str(), &end);
+	return !text.empty() && *end == '\0' && isfinite(value);
+}
+
+// Parses the whole text as an integer that fits into int
+bool parse_int(const string &text, int &value) {
+	char *end;
+	long result = strtol(text.c_str(), &end, 10);
+	value = (int) result;
+	return !text.empty() && *end == '\0' && result >= INT_MIN && result <= INT_MAX;
+}
+
 double calc_coordinate(double min, double max, int i, int count) {
 	return min + (max - min) * ((double) i / (count - 1));
 }
@@ -51,42 +69,34 @@ dcomplex core_function(dcomplex z, dcomplex c) {
 	return g(g_z2(g_z1(z)) + g_c(c));
 }
 
-complex_function *str_to_function(const string &str) {
-	complex_function *res;
-	if (str == "sqr") {
-		res = square;
-	} else if (str == "component_abs") {
-		res = [](dcomplex z) -> dcomplex { return dcomplex(abs(real(z)), abs(imag(z))); };
-	} else if (str == "conj") {
-		res = [](dcomplex z) -> dcomplex { return conj(z); };
-	} else if (str == "cube") {
-		res = [](dcomplex z) -> dcomplex { return z * z * z; };
-	} else if (str == "inverse") {
-		res = invert;
-	} else if (str == "sin") {
-		res = [](dcomplex z) -> dcomplex { return sin(z); };
-	} else if (str == "cos") {
-		res = [](dcomplex z) -> dcomplex { return cos(z); };
-	} else if (str == "tan") {
-		res = [](dcomplex z) -> dcomplex { return tan(z); };
-	} else if (str == "cot") {
-		res = [](dcomplex z) -> dcomplex { return cos(z) / sin(z); };
-	} else if (str == "sinh") {
-		res = [](dcomplex z) -> dcomplex { return sinh(z); };
-	} else if (str == "cosh") {
-		res = [](dcomplex z) -> dcomplex { return cosh(z); };
-	} else if (str == "tanh") {
-		res = [](dcomplex z) -> dcomplex { return tanh(z); };
-	} else if (str == "coth") {
-		res = [](dcomplex z) -> dcomplex { return cosh(z) / sinh(z); };
-	} else if (str == "exp") {
-		res = [](dcomplex z) -> dcomplex { return exp(z); };
-	} else if (str == "log") {
-		res = [](dcomplex z) -> dcomplex { return log(z); };
-	} else {
-		res = [](dcomplex z) -> dcomplex { return z; };
-	}
-	return res;
+// Functions available in the formula; "id" (identity) is stored as an empty name
+const map<string, complex_function *> FUNCTIONS = {
+	{"", [](dcomplex z) { return z; }},
+	{"sqr", square},
+	{"cube", [](dcomplex z) { return z * z * z; }},
+	{"inverse", invert},
+	{"conj", [](dcomplex z) { return conj(z); }},
+	{"component_abs", [](dcomplex z) { return dcomplex(abs(real(z)), abs(imag(z))); }},
+	{"sin", [](dcomplex z) { return sin(z); }},
+	{"cos", [](dcomplex z) { return cos(z); }},
+	{"tan", [](dcomplex z) { return tan(z); }},
+	{"cot", [](dcomplex z) { return cos(z) / sin(z); }},
+	{"sinh", [](dcomplex z) { return sinh(z); }},
+	{"cosh", [](dcomplex z) { return cosh(z); }},
+	{"tanh", [](dcomplex z) { return tanh(z); }},
+	{"coth", [](dcomplex z) { return cosh(z) / sinh(z); }},
+	{"exp", [](dcomplex z) { return exp(z); }},
+	{"log", [](dcomplex z) { return log(z); }},
+};
+
+// Returns the stored name of a formula function, or false if there is no such function
+bool normalize_function_name(const string &name, string &result) {
+	result = name == "id" ? "" : name;
+	return FUNCTIONS.count(result) > 0;
+}
+
+complex_function *str_to_function(const string &name) {
+	return FUNCTIONS.at(name);
 }
 
 // A point escapes once |z| exceeds this radius
@@ -141,26 +151,29 @@ struct color {
 	color(): r(0), g(0), b(0) {};
 
 	color(unsigned char r, unsigned char g, unsigned char b): r(r), g(g), b(b) {};
-
-	color(const string &name) {
-		r = g = b = 0;
-		if (name == "white") {
-			r = g = b = 255;
-		} else if (name == "red") {
-			r = 255;
-		} else if (name == "green") {
-			g = 255;
-		} else if (name == "blue") {
-			b = 255;
-		} else if (name == "yellow") {
-			r = g = 255;
-		} else if (name == "magenta") {
-			b = r = 255;
-		} else if (name == "cyan") {
-			b = g = 255;
-		}
-	}
 };
+
+const map<string, color> COLORS = {
+	{"black", color(0, 0, 0)},
+	{"white", color(255, 255, 255)},
+	{"red", color(255, 0, 0)},
+	{"green", color(0, 255, 0)},
+	{"blue", color(0, 0, 255)},
+	{"yellow", color(255, 255, 0)},
+	{"magenta", color(255, 0, 255)},
+	{"cyan", color(0, 255, 255)},
+};
+
+bool is_color_name(const string &name) {
+	return COLORS.count(name) > 0;
+}
+
+// Checks a sequence like "black:red:white": at least two known colors
+bool is_color_sequence(const string &sequence) {
+	vector<string> names;
+	split(sequence, ':', names);
+	return names.size() >= 2 && all_of(names.begin(), names.end(), is_color_name);
+}
 
 color interpolate(color color1, color color2, double fraction) {
 	return color {
@@ -201,9 +214,11 @@ void tricorn() {
 	julia_on = false;
 }
 
+// Burning ship is traditionally drawn with the imaginary axis pointing down,
+// conj(c) mirrors it to the usual orientation
 void burning_ship() {
-	set_functions("", "component_abs", "sqr", "");
-	set_view(-2.0, 1.0, -1.5, 0.5);
+	set_functions("", "component_abs", "sqr", "conj");
+	set_view(-2.0, 1.0, -0.5, 1.5);
 	julia_on = false;
 }
 
@@ -225,7 +240,7 @@ struct palette {
 		split(color_sequence, ':', str_colors);
 		vector<color> reference_colors;
 		for (size_t i = 0; i < str_colors.size(); i++) {
-			reference_colors.push_back(color(str_colors[i]));
+			reference_colors.push_back(COLORS.at(str_colors[i]));
 		}
 		double interval_length = 1. / (reference_colors.size() - 1);
 		for (size_t i = 1; i < size; i++) {
@@ -277,16 +292,16 @@ Image:
     points <integer>                 Total number of pixels in the output image
     palette_size <integer>           Number of colors, also the maximum iteration count
     palette_skew <double>            Exponent of color distribution (1 = uniform)
-    colors <color_1:...:color_n>     Gradient for points outside the set; available colors:
+    colors <color_1:...:color_n>     Gradient (2+ colors) for points outside the set; colors:
                                      black, white, red, green, blue, yellow, magenta, cyan
     body_color <color>               Color of points inside the set
     continuous_intensity <0 or 1>    Smooth coloring instead of discrete bands
 Formula f_c(z) = g(g_z2(g_z1(z)) + g_c(c)):
     g | g_z1 | g_z2 | g_c <function_name>
                                      Replace one of the functions in the formula;
-                                     available: sqr, cube, inverse, conj, component_abs,
-                                     sin, cos, tan, cot, sinh, cosh, tanh, coth, exp, log;
-                                     any other name means identity
+                                     available: id (identity), sqr, cube, inverse, conj,
+                                     component_abs, sin, cos, tan, cot, sinh, cosh, tanh,
+                                     coth, exp, log
     julia_on <0 or 1>                1: Julia set (c is fixed, z_0 is the point),
                                      0: Mandelbrot-like set (z_0 = 0, c is the point)
     julia_c <re:double> <im:double>  Constant c used for Julia sets
@@ -301,7 +316,7 @@ Each new image is saved to out.png.
 
 string color_sequence("black:red:yellow:green:blue:cyan:magenta:white");
 string color_body_name = "black";
-color color_body(color_body_name);
+color color_body = COLORS.at(color_body_name);
 size_t image_width, image_height;
 palette pal;
 float **buffer;
@@ -343,7 +358,8 @@ void *run(void *ptr) {
 		buffer[x_i] = new float[image_height];
 		double x = calc_coordinate(x_min, x_max, x_i, image_width);
 		for (size_t y_i = 0; y_i < image_height; y_i++) {
-			double y = calc_coordinate(y_min, y_max, y_i, image_height);
+			// image rows go from top to bottom, so the y axis points up as usual
+			double y = calc_coordinate(y_max, y_min, y_i, image_height);
 			buffer[x_i][y_i] = (float) iteration_count(x, y, palette_size);
 		}
 	}
@@ -357,6 +373,39 @@ void read_args(vector<string> &arguments, int number) {
 	}
 }
 
+void print_error(const string &command, const string &message) {
+	cerr << command << ": " << message << endl;
+}
+
+// The read_* functions parse a command argument and print an error if it is invalid
+bool read_double(const string &command, const string &text, double &value) {
+	if (!parse_double(text, value)) {
+		print_error(command, "expected a number, got '" + text + "'");
+		return false;
+	}
+	return true;
+}
+
+bool read_positive_double(const string &command, const string &text, double &value) {
+	if (!read_double(command, text, value)) {
+		return false;
+	}
+	if (value <= 0) {
+		print_error(command, "the value must be positive");
+		return false;
+	}
+	return true;
+}
+
+bool read_int(const string &command, const string &text, int min_value, int max_value, int &value) {
+	if (!parse_int(text, value) || value < min_value || value > max_value) {
+		print_error(command, "expected an integer from " + to_string(min_value) + " to "
+				+ to_string(max_value) + ", got '" + text + "'");
+		return false;
+	}
+	return true;
+}
+
 void clean_buffer() {
 	if (buffer != NULL) {
 		for (size_t x_i = 0; x_i < image_width; x_i++) {
@@ -366,11 +415,16 @@ void clean_buffer() {
 	}
 }
 
-// Chooses the image size so that it has about pixel_count pixels and the aspect ratio of the view
+// Chooses the image size so that it has about pixel_count pixels and the aspect ratio of the view.
+// Each side is at least 2 pixels, so that coordinates can be computed for both edges,
+// and at most MAX_IMAGE_SIDE, which image converters accept.
+const double MAX_IMAGE_SIDE = 16384;
+
 void compute_image_size() {
+	const double min_side = 2, max_side = min(pixel_count / min_side, MAX_IMAGE_SIDE);
 	double aspect_ratio = (x_max - x_min) / (y_max - y_min);
-	image_height = (size_t) sqrt(pixel_count / aspect_ratio);
-	image_width = (size_t) sqrt(pixel_count * aspect_ratio);
+	image_height = (size_t) min(max(sqrt(pixel_count / aspect_ratio), min_side), max_side);
+	image_width = (size_t) min(max(sqrt(pixel_count * aspect_ratio), min_side), max_side);
 }
 
 void recalc_fractal() {
@@ -403,7 +457,11 @@ void prepare_image() {
 			pal.apply(img, x_i, y_i, buffer[x_i][y_i]);
 		}
 	}
-	img.save("out.png");
+	try {
+		img.save("out.png");
+	} catch (const CImgException &e) {
+		cerr << "Could not save out.png: " << e.what() << endl;
+	}
 }
 
 // Unit tests include this file and provide their own main()
@@ -456,135 +514,102 @@ int main() {
 			tricorn();
 		} else if (command == "burning_ship") {
 			burning_ship();
-		} else if (command == "x_min") {
-			double value = atof(arguments[0].c_str());
-			if (value >= x_max) {
-				cerr << "x_min must be less than x_max!" << endl;
+		} else if (command == "x_min" || command == "x_max" || command == "y_min" || command == "y_max") {
+			double value;
+			if (!read_double(command, arguments[0], value)) {
 				continue;
 			}
-			x_min = value;
-		} else if (command == "x_max") {
-			double value = atof(arguments[0].c_str());
-			if (value <= x_min) {
-				cerr << "x_max must be greater than x_min!" << endl;
+			bool is_x = command[0] == 'x', is_min = command.substr(2) == "min";
+			double &bound = is_x ? (is_min ? x_min : x_max) : (is_min ? y_min : y_max);
+			double other = is_x ? (is_min ? x_max : x_min) : (is_min ? y_max : y_min);
+			if (is_min ? value >= other : value <= other) {
+				print_error(command, string("must be ") + (is_min ? "less than " : "greater than ")
+						+ command.substr(0, 2) + (is_min ? "max" : "min"));
 				continue;
 			}
-			x_max = value;
-		} else if (command == "y_min") {
-			double value = atof(arguments[0].c_str());
-			if (value >= y_max) {
-				cerr << "y_min must be less than y_max!" << endl;
-				continue;
-			}
-			y_min = value;
-		} else if (command == "y_max") {
-			double value = atof(arguments[0].c_str());
-			if (value <= y_min) {
-				cerr << "y_max must be greater than y_min!" << endl;
-				continue;
-			}
-			y_max = value;
+			bound = value;
 		} else if (command == "julia_c") {
-			double re = atof(arguments[0].c_str());
-			double im = atof(arguments[1].c_str());
+			double re, im;
+			if (!read_double(command, arguments[0], re) || !read_double(command, arguments[1], im)) {
+				continue;
+			}
 			julia_c = dcomplex(re, im);
 		} else if (command == "palette_size") {
-			int value = atoi(arguments[0].c_str());
-			if (value < 10) {
-				cerr << "The value must be at least 10!" << endl;
+			int value;
+			if (!read_int(command, arguments[0], 10, 10000000, value)) {
 				continue;
 			}
 			palette_size = value;
 		} else if (command == "points") {
-			int value = atoi(arguments[0].c_str());
-			if (value < 100) {
-				cerr << "The value must be at least 100!" << endl;
+			int value;
+			if (!read_int(command, arguments[0], 100, 100000000, value)) {
 				continue;
 			}
 			pixel_count = value;
-		} else if (command == "g") {
-			set_functions(arguments[0], g_z1_name, g_z2_name, g_c_name);
-		} else if (command == "g_z1") {
-			set_functions(g_name, arguments[0], g_z2_name, g_c_name);
-		} else if (command == "g_z2") {
-			set_functions(g_name, g_z1_name, arguments[0], g_c_name);
-		} else if (command == "g_c") {
-			set_functions(g_name, g_z1_name, g_z2_name, arguments[0]);
+		} else if (command == "g" || command == "g_z1" || command == "g_z2" || command == "g_c") {
+			string name;
+			if (!normalize_function_name(arguments[0], name)) {
+				print_error(command, "unknown function '" + arguments[0] + "'");
+				continue;
+			}
+			set_functions(command == "g" ? name : g_name, command == "g_z1" ? name : g_z1_name,
+					command == "g_z2" ? name : g_z2_name, command == "g_c" ? name : g_c_name);
 		} else if (command == "colors") {
+			if (!is_color_sequence(arguments[0])) {
+				print_error(command, "expected at least two known colors separated by ':', got '"
+						+ arguments[0] + "'");
+				continue;
+			}
 			color_sequence = arguments[0];
 			must_recalc_fractal = false;
 		} else if (command == "body_color") {
+			if (!is_color_name(arguments[0])) {
+				print_error(command, "unknown color '" + arguments[0] + "'");
+				continue;
+			}
 			color_body_name = arguments[0];
-			color_body = color(color_body_name);
+			color_body = COLORS.at(color_body_name);
 			must_recalc_fractal = false;
-		} else if (command == "zoom") {
-			double value = atof(arguments[0].c_str());
-			if (value <= 0) {
-				cerr << "The value must be positive!" << endl;
+		} else if (command == "zoom" || command == "left" || command == "right" || command == "top"
+				|| command == "bottom") {
+			double value;
+			if (!read_positive_double(command, arguments[0], value)) {
 				continue;
 			}
-			zoom(x_min, x_max, value);
-			zoom(y_min, y_max, value);
-		} else if (command == "left") {
-			double value = atof(arguments[0].c_str());
-			if (value <= 0) {
-				cerr << "The value must be positive!" << endl;
-				continue;
+			if (command == "zoom") {
+				zoom(x_min, x_max, value);
+				zoom(y_min, y_max, value);
+			} else if (command == "left") {
+				x_max -= (x_max - x_min) * (1 - value);
+			} else if (command == "right") {
+				x_min += (x_max - x_min) * (1 - value);
+			} else if (command == "top") {
+				y_min += (y_max - y_min) * (1 - value);
+			} else {
+				y_max -= (y_max - y_min) * (1 - value);
 			}
-			x_max -= (x_max - x_min) * (1 - value);
-		} else if (command == "right") {
-			double value = atof(arguments[0].c_str());
-			if (value <= 0) {
-				cerr << "The value must be positive!" << endl;
-				continue;
-			}
-			x_min += (x_max - x_min) * (1 - value);
-		} else if (command == "top") {
-			double value = atof(arguments[0].c_str());
-			if (value <= 0) {
-				cerr << "The value must be positive!" << endl;
-				continue;
-			}
-			y_max -= (y_max - y_min) * (1 - value);
-		} else if (command == "bottom") {
-			double value = atof(arguments[0].c_str());
-			if (value <= 0) {
-				cerr << "The value must be positive!" << endl;
-				continue;
-			}
-			y_min += (y_max - y_min) * (1 - value);
 		} else if (command == "palette_skew") {
-			double value = atof(arguments[0].c_str());
-			if (value <= 0) {
-				cerr << "The value must be positive!" << endl;
+			double value;
+			if (!read_positive_double(command, arguments[0], value)) {
 				continue;
 			}
 			palette_skew = value;
 			must_recalc_fractal = false;
-		} else if (command == "continuous_intensity") {
-			int value = atoi(arguments[0].c_str());
-			if (value != 0 && value != 1) {
-				cerr << "Only valid values are 0 and 1!" << endl;
+		} else if (command == "continuous_intensity" || command == "julia_on") {
+			int value;
+			if (!read_int(command, arguments[0], 0, 1, value)) {
 				continue;
 			}
-			continuous_intensity = (bool) value;
-		} else if (command == "julia_on") {
-			int value = atoi(arguments[0].c_str());
-			if (value != 0 && value != 1) {
-				cerr << "Only valid values are 0 and 1!" << endl;
-				continue;
-			}
-			julia_on = (bool) value;
+			(command == "julia_on" ? julia_on : continuous_intensity) = value;
 		} else if (command == "threads_num") {
-			int value = atoi(arguments[0].c_str());
-			if (value < 1 || value > 1024) {
-				cerr << "The value must be between 1 and 1024!" << endl;
+			int value;
+			if (!read_int(command, arguments[0], 1, 1024, value)) {
 				continue;
 			}
 			threads_num = value;
 			continue;
 		} else {
-			cerr << "Unknown command! Type 'help' to see the list of available ones." << endl;
+			print_error(command, "unknown command, type 'help' to see the list of available ones");
 			continue;
 		}
 

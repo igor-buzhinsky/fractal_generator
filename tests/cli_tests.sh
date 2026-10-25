@@ -73,13 +73,16 @@ run "mandelbrot" "x_min -2" "x_max 2" "y_min -2" "y_max 2" "zoom 4" "exit"
 expect_output "zoom" "x in [-0.5, 0.5], y in [-0.5, 0.5]"
 
 run "mandelbrot" "x_min -2" "x_max 2" "y_min -2" "y_max 2" "left 0.25" "top 0.5" "exit"
-expect_output "left and top" "x in [-2, -1], y in [-2, 0]"
+expect_output "left and top" "x in [-2, -1], y in [0, 2]"
 
 run "mandelbrot" "x_min -2" "x_max 2" "y_min -2" "y_max 2" "right 0.25" "bottom 0.5" "exit"
-expect_output "right and bottom" "x in [1, 2], y in [0, 2]"
+expect_output "right and bottom" "x in [1, 2], y in [-2, 0]"
 
 run "points 10000" "g_z1 conj" "g sin" "exit"
 expect_output "custom formula" "z -> sin(sqr(conj(z)) + c)"
+
+run "points 10000" "g_z1 conj" "g_z1 id" "exit"
+expect_output "identity function" "z -> sqr(z) + c"
 
 run "points 10000" "julia_c 0.3 -0.5" "exit"
 expect_output "julia_c" "c = 0.3 - 0.5i"
@@ -91,17 +94,39 @@ expect_output "colors" "palette_skew = 2, continuous_intensity = on"
 run "points 10000" "threads_num 1" "plot" "exit"
 expect_output "threads_num" "Threads:  1"
 
-run "x_min 100" "points 10" "palette_size 1" "zoom 0" "continuous_intensity 2" "threads_num 0" "exit"
+run "x_min 100" "y_max -5" "points 10" "palette_size 1" "zoom 0" "continuous_intensity 2" \
+	"threads_num 0" "exit"
 expect_success "invalid values"
-expect_output "invalid values" "x_min must be less than x_max!"
-expect_output "invalid values" "The value must be at least 100!"
-expect_output "invalid values" "The value must be at least 10!"
-expect_output "invalid values" "The value must be positive!"
-expect_output "invalid values" "Only valid values are 0 and 1!"
-expect_output "invalid values" "The value must be between 1 and 1024!"
+expect_output "invalid values" "x_min: must be less than x_max"
+expect_output "invalid values" "y_max: must be greater than y_min"
+expect_output "invalid values" "points: expected an integer from 100 to 100000000, got '10'"
+expect_output "invalid values" "palette_size: expected an integer from 10 to 10000000, got '1'"
+expect_output "invalid values" "zoom: the value must be positive"
+expect_output "invalid values" "continuous_intensity: expected an integer from 0 to 1, got '2'"
+expect_output "invalid values" "threads_num: expected an integer from 1 to 1024, got '0'"
+
+run "zoom abc" "points 1.5" "julia_c 1 x" "left 0.5x" "exit"
+expect_output "not numbers" "zoom: expected a number, got 'abc'"
+expect_output "not numbers" "points: expected an integer from 100 to 100000000, got '1.5'"
+expect_output "not numbers" "julia_c: expected a number, got 'x'"
+expect_output "not numbers" "left: expected a number, got '0.5x'"
+
+run "colors black" "colors black:purple" "body_color purple" "g_z1 no_such_function" "exit"
+expect_output "invalid names" "colors: expected at least two known colors separated by ':', got 'black'"
+expect_output "invalid names" "colors: expected at least two known colors separated by ':', got 'black:purple'"
+expect_output "invalid names" "body_color: unknown color 'purple'"
+expect_output "invalid names" "g_z1: unknown function 'no_such_function'"
+# rejected values must not change the state
+expect_output "invalid names" "black:red:yellow:green:blue:cyan:magenta:white (colors), inside the set: black (body_color)"
+expect_output "invalid names" "z -> sqr(z) + c"
+
+# a very wide view still produces a valid image
+run "x_min -2" "x_max 2" "y_min 0" "y_max 0.000000001" "points 10000" "exit"
+expect_success "very wide view"
+expect_png "very wide view" 5000 2
 
 run "no_such_command" "exit"
-expect_output "unknown command" "Unknown command!"
+expect_output "unknown command" "no_such_command: unknown command"
 
 run "help" "exit"
 expect_success "help"
