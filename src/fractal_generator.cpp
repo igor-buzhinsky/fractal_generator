@@ -254,21 +254,39 @@ void zoom(double &x1, double &x2, double value) {
 }
 
 void print_help() {
-	cout << "Commands:" << endl;
-	cout << "    (x_min | x_max | y_min | y_max) <double>" << endl;
-	cout << "    (left | right | top | bottom | zoom) <double>" << endl;
-	cout << "    palette_size <integer>" << endl;
-	cout << "    palette_skew <double>" << endl;
-	cout << "    points <integer>" << endl;
-	cout << "    colors <color_1:color_2:...color_n>" << endl;
-	cout << "    body_color <color>" << endl;
-	cout << "    threads_num <integer>" << endl;
-	cout << "    continuous_intensity <0 or 1>" << endl;
-	cout << "    julia_on <0 or 1>" << endl;
-	cout << "    julia_c <re:double> <im:double>" << endl;
-	cout << "    (mandelbrot | julia | tricorn | burning_ship)" << endl;
-	cout << "    (plot | help | exit)" << endl;
-	cout << "    (g | g_z1 | g_z2 | g_c) <function_name>" << endl;
+	cout << "Presets:" << endl;
+	cout << "    mandelbrot | julia | tricorn | burning_ship" << endl;
+	cout << "                                     Load a fractal with its default view" << endl;
+	cout << "View:" << endl;
+	cout << "    x_min | x_max | y_min | y_max <double>" << endl;
+	cout << "                                     Set a boundary of the visible area" << endl;
+	cout << "    zoom <double>                    Zoom in around the center (< 1 zooms out)" << endl;
+	cout << "    left | right | top | bottom <double>" << endl;
+	cout << "                                     Keep only this fraction of the view on that side," << endl;
+	cout << "                                     e.g. 'left 0.5' keeps the left half" << endl;
+	cout << "Image:" << endl;
+	cout << "    points <integer>                 Total number of pixels in the output image" << endl;
+	cout << "    palette_size <integer>           Number of colors, also the maximum iteration count" << endl;
+	cout << "    palette_skew <double>            Exponent of color distribution (1 = uniform)" << endl;
+	cout << "    colors <color_1:...:color_n>     Gradient for points outside the set; available colors:" << endl;
+	cout << "                                     black, white, red, green, blue, yellow, magenta, cyan" << endl;
+	cout << "    body_color <color>               Color of points inside the set" << endl;
+	cout << "    continuous_intensity <0 or 1>    Smooth coloring instead of discrete bands" << endl;
+	cout << "Formula f_c(z) = g(g_z2(g_z1(z)) + g_c(c)):" << endl;
+	cout << "    g | g_z1 | g_z2 | g_c <function_name>" << endl;
+	cout << "                                     Replace one of the functions in the formula;" << endl;
+	cout << "                                     available: sqr, cube, inverse, conj, component_abs," << endl;
+	cout << "                                     sin, cos, tan, cot, sinh, cosh, tanh, coth, exp, log;" << endl;
+	cout << "                                     any other name means identity" << endl;
+	cout << "    julia_on <0 or 1>                1: Julia set (c is fixed, z_0 is the point)," << endl;
+	cout << "                                     0: Mandelbrot-like set (z_0 = 0, c is the point)" << endl;
+	cout << "    julia_c <re:double> <im:double>  Constant c used for Julia sets" << endl;
+	cout << "Other:" << endl;
+	cout << "    threads_num <integer>            Number of threads used for computation" << endl;
+	cout << "    plot                             Redraw the image" << endl;
+	cout << "    help                             Show this list" << endl;
+	cout << "    exit                             Quit the program" << endl;
+	cout << "Each new image is saved to out.png." << endl;
 }
 
 string color_sequence("black:red:yellow:green:blue:cyan:magenta:white");
