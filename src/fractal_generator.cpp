@@ -224,7 +224,8 @@ struct palette {
 			double fraction = pow((double) i / (size - 1), skew);
 			for (size_t j = 1; j < reference_colors.size(); j++) {
 				double border = j * interval_length;
-				if (fraction <= border) {
+				// the last border may be slightly below 1 due to rounding
+				if (fraction <= border || j == reference_colors.size() - 1) {
 					color c1 = reference_colors[j - 1];
 					color c2 = reference_colors[j];
 					color c = interpolate(c1, c2, 1 - (border - fraction) / interval_length);
@@ -399,6 +400,8 @@ void prepare_image() {
 	img.save("out.png");
 }
 
+// Unit tests include this file and provide their own main()
+#ifndef FRACTAL_GENERATOR_NO_MAIN
 int main(int argc, char *argv[]) {
 	print_help();
 	julia();
@@ -413,7 +416,10 @@ int main(int argc, char *argv[]) {
 			first_time = false;
 		} else {
 			cout << "> ";
-			cin >> command;
+			if (!(cin >> command)) {
+				// end of input, e.g. Ctrl+D or the end of a piped script
+				command = "exit";
+			}
 			int arg_number;
 			if (command == "exit" || command == "help" || command == "plot" || command == "mandelbrot"
 					 || command == "julia" || command == "tricorn" || command == "burning_ship") {
@@ -586,3 +592,4 @@ int main(int argc, char *argv[]) {
 		print_state();
 	}
 }
+#endif

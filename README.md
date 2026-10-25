@@ -10,6 +10,12 @@ The build requires the X11 development headers. For example, on Ubuntu:
 
 > sudo apt install build-essential libx11-dev
 
+Run the tests:
+
+> make test
+
+This runs unit tests for the computation code (`tests/unit_tests.cpp`) and end-to-end tests that feed commands to the program and check its output and the generated image (`tests/cli_tests.sh`).
+
 Run:
 
 > ./fractal_generator
