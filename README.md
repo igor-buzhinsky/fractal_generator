@@ -1,6 +1,7 @@
 # Fractal generator
 
 [![Tests](https://github.com/igor-buzhinsky/fractal_generator/actions/workflows/tests.yml/badge.svg)](https://github.com/igor-buzhinsky/fractal_generator/actions/workflows/tests.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 This is a simple image generator for Mandelbrot and Julia sets and some derived fractals. It has an interactive command-line interface (e.g. for zooming) and generates its output as an image in the same directory.
 
@@ -31,3 +32,9 @@ mandelbrot
 top 0.5
 left 0.5
 ```
+
+## License
+
+This project is licensed under the [MIT License](LICENSE).
+
+It bundles the [CImg](https://cimg.eu) library (`src/CImg.h`), which remains under its own license: CeCILL-C or CeCILL, at your choice (see `CImg_licenses/`).
