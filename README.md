@@ -1,5 +1,7 @@
 # Fractal generator
 
+[![Tests](https://github.com/igor-buzhinsky/fractal_generator/actions/workflows/tests.yml/badge.svg)](https://github.com/igor-buzhinsky/fractal_generator/actions/workflows/tests.yml)
+
 This is a simple image generator for Mandelbrot and Julia sets and some derived fractals. It has an interactive command-line interface (e.g. for zooming) and generates its output as an image in the same directory.
 
 Build on Linux:
