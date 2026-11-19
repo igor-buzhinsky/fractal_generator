@@ -2,7 +2,7 @@
 
 #include <climits>
 #include <cmath>
-#include <cstdio>
+#include <format>
 #include <sstream>
 #include <stdexcept>
 
@@ -304,7 +304,5 @@ bool parse_int(const string &text, int &value) {
 }
 
 string format_number(double value, int precision) {
-	char result[64];
-	snprintf(result, sizeof(result), "%.*g", precision, value);
-	return result;
+	return format("{:.{}g}", value, precision);
 }

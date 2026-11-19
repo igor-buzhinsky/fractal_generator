@@ -182,12 +182,12 @@ iteration_grid compute_fractal(const fractal_settings &settings, int threads_num
 		}
 	};
 
-	vector<thread> threads;
-	for (int i = 0; i < threads_num; i++) {
-		threads.emplace_back(compute_rows, i);
-	}
-	for (thread &t : threads) {
-		t.join();
+	{
+		// jthread joins on destruction, so all rows are computed when the block ends
+		vector<jthread> threads;
+		for (int i = 0; i < threads_num; i++) {
+			threads.emplace_back(compute_rows, i);
+		}
 	}
 	return grid;
 }

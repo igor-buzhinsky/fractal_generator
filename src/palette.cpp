@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 #include <map>
-#include <sstream>
+#include <ranges>
 
 using namespace std;
 
@@ -22,10 +22,8 @@ const map<string, color> COLORS = {
 
 vector<string> split(const string &s, char delimiter) {
 	vector<string> parts;
-	stringstream ss(s);
-	string part;
-	while (getline(ss, part, delimiter)) {
-		parts.push_back(part);
+	for (auto part : views::split(s, delimiter)) {
+		parts.emplace_back(part.begin(), part.end());
 	}
 	return parts;
 }
@@ -59,8 +57,8 @@ bool find_color(const string &name, color &result) {
 
 bool is_color_sequence(const string &sequence) {
 	vector<string> names = split(sequence, ':');
-	return names.size() >= 2 && all_of(names.begin(), names.end(),
-			[](const string &name) { return COLORS.count(name) > 0; });
+	return names.size() >= 2 && ranges::all_of(names,
+			[](const string &name) { return COLORS.contains(name); });
 }
 
 palette::palette(size_t size, const string &color_sequence, color body_color, double skew) {

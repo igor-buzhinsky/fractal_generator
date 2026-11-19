@@ -11,7 +11,7 @@ Build on Linux:
 
 > make
 
-The build requires a C++17 compiler and libpng. For example, on Ubuntu:
+The build requires a C++20 compiler (e.g. GCC 13+ or Clang 17+) and libpng. For example, on Ubuntu:
 
 > sudo apt install build-essential libpng-dev
 

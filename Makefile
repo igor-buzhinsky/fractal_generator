@@ -1,4 +1,4 @@
-CXXFLAGS = -std=c++17 -O3 -Wall
+CXXFLAGS = -std=c++20 -O3 -Wall
 LDLIBS = -lpng -pthread
 
 HEADERS = $(wildcard src/*.h)
