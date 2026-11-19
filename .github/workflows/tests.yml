@@ -15,3 +15,28 @@ jobs:
 
       - name: Build and run tests
         run: make -j"$(nproc)" EXTRA_CXXFLAGS=-Werror test
+
+  sanitizers:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        sanitizer: [address+undefined, thread]
+    name: sanitizers (${{ matrix.sanitizer }})
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y libpng-dev
+
+      # ThreadSanitizer cannot handle the high-entropy address randomization of recent kernels
+      - name: Reduce address randomization for ThreadSanitizer
+        if: matrix.sanitizer == 'thread'
+        run: sudo sysctl vm.mmap_rnd_bits=28
+
+      - name: Build and run tests with sanitizers
+        env:
+          SANITIZERS: ${{ matrix.sanitizer == 'thread' && 'thread' || 'address,undefined' }}
+        run: >-
+          make -j"$(nproc)" test
+          EXTRA_CXXFLAGS="-Werror -O1 -g -fno-omit-frame-pointer -fsanitize=$SANITIZERS -fno-sanitize-recover=all"
