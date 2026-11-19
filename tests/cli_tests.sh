@@ -15,16 +15,17 @@ fail() {
 	failures=$((failures + 1))
 }
 
-# Runs the program with the given commands (one per line) and stores its output
+# Runs the program with the given commands (one per line) and stores its output.
+# Every run must exit successfully, even with invalid commands, and without sanitizer
+# reports: leaks and data races are only reported when the program exits.
 run() {
 	rm -f out.png
 	output="$(printf '%s\n' "$@" | timeout 60 "$BINARY" 2>&1)"
-	status=$?
-}
-
-expect_success() {
+	local status=$?
 	checks=$((checks + 1))
-	[ "$status" -eq 0 ] || fail "$1: exit code $status"
+	[ "$status" -eq 0 ] || fail "'$*': exit code $status"
+	checks=$((checks + 1))
+	! grep -qE 'Sanitizer|runtime error:' <<< "$output" || fail "'$*': sanitizer report in output"
 }
 
 expect_output() {
@@ -49,14 +50,12 @@ expect_png() {
 }
 
 run "points 10000" "exit"
-expect_success "default Julia set"
 expect_output "default Julia set" "Presets:"
 expect_output "default Julia set" "Julia set: z starts at the point"
 expect_png "default Julia set" 123 81
 
 for preset in mandelbrot tricorn burning_ship julia; do
 	run "points 10000" "$preset" "exit"
-	expect_success "$preset"
 	checks=$((checks + 1))
 	[ -f out.png ] || fail "$preset: out.png not created"
 done
@@ -96,7 +95,6 @@ expect_output "threads_num" "Threads:  1"
 
 run "x_min 100" "y_max -5" "points 10" "palette_size 1" "zoom 0" "continuous_intensity 2" \
 	"threads_num 0" "exit"
-expect_success "invalid values"
 expect_output "invalid values" "x_min: must be less than x_max"
 expect_output "invalid values" "y_max: must be greater than y_min"
 expect_output "invalid values" "points: expected an integer from 100 to 100000000, got '10'"
@@ -122,20 +120,17 @@ expect_output "invalid names" "z -> sqr(z) + c"
 
 # a very wide view still produces a valid image
 run "x_min -2" "x_max 2" "y_min 0" "y_max 0.000000001" "points 10000" "exit"
-expect_success "very wide view"
 expect_png "very wide view" 5000 2
 
 run "no_such_command" "exit"
 expect_output "unknown command" "no_such_command: unknown command"
 
 run "help" "exit"
-expect_success "help"
 [ "$(grep -c "Presets:" <<< "$output")" -eq 2 ] || fail "help: help text not printed again"
 checks=$((checks + 1))
 
 # The program must also quit when the input ends without 'exit'
 run "points 10000"
-expect_success "end of input"
 
 echo "CLI tests: $((checks - failures))/$checks checks passed"
 [ "$failures" -eq 0 ]

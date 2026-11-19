@@ -6,13 +6,18 @@ OBJECTS = src/fractal.o src/palette.o src/cli.o
 
 all: fractal_generator
 
-fractal_generator: $(OBJECTS) src/main.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+# Records the compiler and flags, so that changing them (e.g. EXTRA_CXXFLAGS for a
+# sanitizer build) rebuilds everything instead of mixing old and new objects
+.build_flags: FORCE
+	@echo '$(CXX) $(CXXFLAGS) $(LDLIBS)' | cmp -s - $@ || echo '$(CXX) $(CXXFLAGS) $(LDLIBS)' > $@
 
-tests/unit_tests: $(OBJECTS) tests/unit_tests.o
-	$(CXX) $(CXXFLAGS) $^ -o $@ $(LDLIBS)
+fractal_generator: $(OBJECTS) src/main.o .build_flags
+	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@ $(LDLIBS)
 
-%.o: %.cpp $(HEADERS)
+tests/unit_tests: $(OBJECTS) tests/unit_tests.o .build_flags
+	$(CXX) $(CXXFLAGS) $(filter %.o,$^) -o $@ $(LDLIBS)
+
+%.o: %.cpp $(HEADERS) .build_flags
 	$(CXX) $(CXXFLAGS) -Isrc -isystem third_party/cimg -c $< -o $@
 
 test: fractal_generator tests/unit_tests
@@ -20,6 +25,6 @@ test: fractal_generator tests/unit_tests
 	./tests/cli_tests.sh
 
 clean:
-	rm -f fractal_generator tests/unit_tests src/*.o tests/*.o
+	rm -f fractal_generator tests/unit_tests src/*.o tests/*.o .build_flags
 
-.PHONY: all test clean
+.PHONY: all test clean FORCE

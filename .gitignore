@@ -2,3 +2,4 @@ fractal_generator
 out.png
 tests/unit_tests
 *.o
+.build_flags

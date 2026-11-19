@@ -20,5 +20,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 
-This license does not apply to src/CImg.h, which is part of the CImg library
-(https://cimg.eu) and is distributed under its own license, see CImg_licenses/.
+This license does not apply to third_party/cimg/CImg.h, which is part of the
+CImg library (https://cimg.eu) and is distributed under its own license, see
+third_party/cimg/licenses/.

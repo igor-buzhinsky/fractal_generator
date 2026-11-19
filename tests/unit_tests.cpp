@@ -145,6 +145,7 @@ void test_colors() {
 	CHECK(!is_color_sequence("black"));
 	CHECK(!is_color_sequence("black:purple"));
 	CHECK(!is_color_sequence("black::white"));
+	CHECK(!is_color_sequence("black:white:"));
 	CHECK(!is_color_sequence(""));
 }
 
