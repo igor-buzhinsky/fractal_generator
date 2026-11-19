@@ -8,38 +8,9 @@
 
 #include "cli.h"
 #include "fractal.h"
-#include "palette.h"
+#include "image.h"
 
-// The program only saves images and never opens a window, so CImg does not need X11
-#define cimg_display 0
-// Save PNG files with libpng instead of calling an external converter
-#define cimg_use_png
-#include <CImg.h>
-
-using namespace cimg_library;
 using namespace std;
-
-void save_image(const iteration_grid &grid, const app_state &state, const string &path) {
-	color body_color;
-	find_color(state.colors.body_color, body_color);
-	palette pal(state.fractal.palette_size, state.colors.colors, body_color, state.colors.skew);
-	// image sides are at most MAX_IMAGE_SIDE, so they fit into CImg's unsigned int
-	const auto width = (unsigned) grid.width, height = (unsigned) grid.height;
-	CImg<unsigned char> img(width, height, 1, 3, 0);
-	for (unsigned y_i = 0; y_i < height; y_i++) {
-		for (unsigned x_i = 0; x_i < width; x_i++) {
-			color c = pal.at(grid.at(x_i, y_i));
-			img(x_i, y_i, 0) = c.r;
-			img(x_i, y_i, 1) = c.g;
-			img(x_i, y_i, 2) = c.b;
-		}
-	}
-	try {
-		img.save(path.c_str());
-	} catch (const CImgException &e) {
-		cerr << "Could not save " << path << ": " << e.what() << endl;
-	}
-}
 
 int main() {
 	print_help(cout);
@@ -54,7 +25,7 @@ int main() {
 			grid = compute_fractal(state.fractal, state.threads_num);
 		}
 		if (next == outcome::recompute || next == outcome::recolor) {
-			save_image(grid, state, "out.png");
+			save_image(grid, state.colors, state.fractal.palette_size, "out.png", cerr);
 			print_state(cout, state, {grid.width, grid.height});
 		}
 
