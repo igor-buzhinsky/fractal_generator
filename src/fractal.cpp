@@ -164,6 +164,14 @@ image_size compute_image_size(const view &area, int pixel_count) {
 	};
 }
 
+vector<size_t> thread_rows(int thread_index, int threads_num, size_t height) {
+	vector<size_t> rows;
+	for (size_t y_i = (size_t) thread_index; y_i < height; y_i += (size_t) threads_num) {
+		rows.push_back(y_i);
+	}
+	return rows;
+}
+
 iteration_grid compute_fractal(const fractal_settings &settings, int threads_num) {
 	image_size size = compute_image_size(settings.area, settings.pixel_count);
 	iteration_grid grid;
@@ -172,9 +180,8 @@ iteration_grid compute_fractal(const fractal_settings &settings, int threads_num
 	grid.values.resize(grid.width * grid.height);
 	const view &area = settings.area;
 
-	// thread i computes rows i, i + threads_num, ...
 	auto compute_rows = [&](int thread_index) {
-		for (size_t y_i = thread_index; y_i < grid.height; y_i += threads_num) {
+		for (size_t y_i : thread_rows(thread_index, threads_num, grid.height)) {
 			// image rows go from top to bottom, so the y axis points up as usual
 			double y = pixel_coordinate(area.y_max, area.y_min, y_i, grid.height);
 			for (size_t x_i = 0; x_i < grid.width; x_i++) {

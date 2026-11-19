@@ -2,7 +2,7 @@ CXXFLAGS = -std=c++20 -O3 -Wall -Wextra -Wpedantic -Wshadow -Wconversion $(EXTRA
 LDLIBS = -lpng -pthread
 
 HEADERS = $(wildcard src/*.h) third_party/cimg/CImg.h
-OBJECTS = src/fractal.o src/palette.o src/cli.o src/image.o
+OBJECTS = src/fractal.o src/palette.o src/cli.o src/image.o src/session.o
 
 all: fractal_generator
 

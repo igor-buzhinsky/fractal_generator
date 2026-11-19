@@ -95,5 +95,10 @@ struct iteration_grid {
 	float at(size_t x_i, size_t y_i) const { return values[y_i * width + x_i]; }
 };
 
+// Rows computed by one of threads_num threads: thread i computes rows i, i + threads_num, ...,
+// so that rows with slow and fast points are spread evenly. Together, the threads compute
+// every row exactly once.
+std::vector<size_t> thread_rows(int thread_index, int threads_num, size_t height);
+
 // Computes iteration counts for the whole image using the given number of threads
 iteration_grid compute_fractal(const fractal_settings &settings, int threads_num);

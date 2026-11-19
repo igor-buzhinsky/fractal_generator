@@ -12,6 +12,7 @@
 #include "fractal.h"
 #include "image.h"
 #include "palette.h"
+#include "session.h"
 
 // CImg is only used to read back the saved images
 #define cimg_display 0
@@ -285,6 +286,20 @@ void test_compute_fractal() {
 	CHECK(grid.at(right, bottom) == (float) iteration_count(settings, dcomplex(a.x_max, a.y_min)));
 	settings.area = {-2, 1, -1.5, 1.5};
 
+	// the threads compute every row exactly once, even with more threads than rows
+	for (int threads_num : {1, 2, 3, 7, 64}) {
+		for (size_t height : {1, 2, 10, 63, 100}) {
+			vector<int> times_computed(height, 0);
+			for (int i = 0; i < threads_num; i++) {
+				for (size_t row : thread_rows(i, threads_num, height)) {
+					CHECK(row < height);
+					times_computed[min(row, height - 1)]++;
+				}
+			}
+			CHECK(times_computed == vector<int>(height, 1));
+		}
+	}
+
 	// multithreading must not change the result, even with more threads than rows
 	CHECK(compute_fractal(settings, 7).values == single_threaded.values);
 	settings.pixel_count = 100;
@@ -496,6 +511,45 @@ void test_save_image() {
 	CHECK(errors.str().find("Could not save no_such_directory/image.png") != string::npos);
 }
 
+void test_session() {
+	app_state state;
+	apply_preset("mandelbrot", state.fractal);
+	vector<int> thread_counts;
+	compute_function compute = [&](const fractal_settings &settings, int threads_num) {
+		thread_counts.push_back(threads_num);
+		iteration_grid grid;
+		grid.width = 2;
+		grid.height = 2;
+		grid.values.assign(4, settings.julia_on ? 1.0f : 0.0f);
+		return grid;
+	};
+	const string path = "unit_test_session.png";
+	stringstream in("threads_num 3\nplot\ncolors black:white\nno_such_command\njulia_on 1\n"
+			"threads_num 1\nexit\nplot\n"), out, errors;
+	run_session(state, in, out, errors, path, compute);
+
+	// computed for the initial image, 'plot' and 'julia_on', with the current thread count;
+	// color changes reuse the iteration counts, and commands after 'exit' are not run
+	CHECK(thread_counts == vector<int>({4, 3, 3}));
+	// the state is printed after every command that changes the image
+	size_t states = 0;
+	for (size_t pos = out.str().find("Formula:"); pos != string::npos; pos = out.str().find("Formula:", pos + 1)) {
+		states++;
+	}
+	CHECK(states == 4);
+	CHECK(errors.str().find("no_such_command: unknown command") != string::npos);
+	cimg_library::CImg<unsigned char> img(path.c_str());
+	CHECK(img.width() == 2 && img.height() == 2);
+	remove(path.c_str());
+
+	// the end of input quits as well
+	stringstream empty_in(""), empty_out;
+	thread_counts.clear();
+	run_session(state, empty_in, empty_out, errors, path, compute);
+	CHECK(thread_counts == vector<int>({1}));
+	remove(path.c_str());
+}
+
 void test_help() {
 	stringstream help;
 	print_help(help);
@@ -529,6 +583,7 @@ int main() {
 	test_commands();
 	test_print_state();
 	test_save_image();
+	test_session();
 	test_help();
 
 	cout << "Unit tests: " << g_checks - g_failures << "/" << g_checks << " checks passed" << endl;
