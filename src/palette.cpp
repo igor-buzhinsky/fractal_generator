@@ -67,11 +67,11 @@ palette::palette(size_t size, const string &color_sequence, color body_color, do
 	for (const string &name : split(color_sequence, ':')) {
 		gradient.push_back(COLORS.at(name));
 	}
-	double interval_length = 1. / (gradient.size() - 1);
+	double interval_length = 1. / (double) (gradient.size() - 1);
 	for (size_t i = 1; i < size; i++) {
-		double fraction = pow((double) i / (size - 1), skew);
+		double fraction = pow((double) i / (double) (size - 1), skew);
 		for (size_t j = 1; j < gradient.size(); j++) {
-			double border = j * interval_length;
+			double border = (double) j * interval_length;
 			// the last border may be slightly below 1 due to rounding
 			if (fraction <= border || j == gradient.size() - 1) {
 				colors.push_back(interpolate(gradient[j - 1], gradient[j],
@@ -84,5 +84,5 @@ palette::palette(size_t size, const string &color_sequence, color body_color, do
 
 color palette::at(double index) const {
 	size_t int_index = (size_t) floor(index);
-	return interpolate(colors[int_index], colors[int_index + 1], index - int_index);
+	return interpolate(colors[int_index], colors[int_index + 1], index - (double) int_index);
 }

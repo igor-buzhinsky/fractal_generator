@@ -63,7 +63,7 @@ const double SMOOTH_ESCAPE_RADIUS = 1 << 16;
 
 // Coordinate of pixel i out of count, so that pixel 0 is at first and the last one at last
 double pixel_coordinate(double first, double last, size_t i, size_t count) {
-	return first + (last - first) * ((double) i / (count - 1));
+	return first + (last - first) * ((double) i / (double) (count - 1));
 }
 
 }
@@ -86,9 +86,10 @@ bool find_function(const string &name, named_function &result) {
 	return true;
 }
 
-formula::formula(const string &g, const string &g_z1, const string &g_z2, const string &g_c)
-	: g(function_by_name(g)), g_z1(function_by_name(g_z1)), g_z2(function_by_name(g_z2)),
-	g_c(function_by_name(g_c)) {}
+formula::formula(const string &g_name, const string &g_z1_name, const string &g_z2_name,
+		const string &g_c_name)
+	: g(function_by_name(g_name)), g_z1(function_by_name(g_z1_name)),
+	g_z2(function_by_name(g_z2_name)), g_c(function_by_name(g_c_name)) {}
 
 string formula::to_string() const {
 	return apply_name(g.name, apply_name(g_z2.name, apply_name(g_z1.name, "z")) + " + "
@@ -139,13 +140,13 @@ double iteration_count(const fractal_settings &settings, dcomplex point) {
 			// normalized iteration count: subtract how far |z| overshot the bailout
 			double nu = log2(log2(abs(v))) - 1;
 			nu = min(max(nu, 0.0), 1.0);
-			return i + 1 - nu;
+			return (double) i + 1 - nu;
 		}
 	} else {
 		for (i = 1; i < palette_size - 1; i++) {
 			v = f.apply(v, c);
 			if (abs(v) > ESCAPE_RADIUS) {
-				return i;
+				return (double) i;
 			}
 		}
 	}

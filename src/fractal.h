@@ -26,8 +26,8 @@ struct formula {
 	named_function g, g_z1, g_z2, g_c;
 
 	// Each name must be valid for find_function(), "" is the identity function
-	formula(const std::string &g, const std::string &g_z1, const std::string &g_z2,
-			const std::string &g_c);
+	formula(const std::string &g_name, const std::string &g_z1_name, const std::string &g_z2_name,
+			const std::string &g_c_name);
 
 	dcomplex apply(dcomplex z, dcomplex c) const {
 		return g.apply(g_z2.apply(g_z1.apply(z)) + g_c.apply(c));

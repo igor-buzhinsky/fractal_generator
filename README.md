@@ -39,4 +39,4 @@ left 0.5
 
 This project is licensed under the [MIT License](LICENSE).
 
-It bundles the [CImg](https://cimg.eu) library (`src/CImg.h`), which remains under its own license: CeCILL-C or CeCILL, at your choice (see `CImg_licenses/`).
+It bundles the [CImg](https://cimg.eu) library (`third_party/cimg/CImg.h`), which remains under its own license: CeCILL-C or CeCILL, at your choice (see `third_party/cimg/licenses/`).
