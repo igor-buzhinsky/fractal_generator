@@ -137,8 +137,9 @@ double iteration_count(const fractal_settings &settings, dcomplex point) {
 		}
 
 		if (i < palette_size - 2) {
-			// normalized iteration count: subtract how far |z| overshot the bailout
-			double nu = log2(log2(abs(v))) - 1;
+			// normalized iteration count: for z^2, |z| is between R and about R^2 right
+			// after escaping, so nu goes from 0 to 1 depending on how far |z| overshot R
+			double nu = log2(log2(abs(v)) / log2(SMOOTH_ESCAPE_RADIUS));
 			nu = min(max(nu, 0.0), 1.0);
 			return (double) i + 1 - nu;
 		}
